@@ -64,7 +64,7 @@ def get_current_user(
 
 
 def authorize(roles: list[str] = [], permissions: list[str] = []):
-    # Basic authorization
+    # A very basic authorization, TODO: use casbin instead
     def check_user(user: Annotated[User, Depends(get_current_user)]):
         if all(
             any(
