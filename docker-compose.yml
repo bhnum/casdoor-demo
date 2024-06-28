@@ -1,0 +1,76 @@
+services:
+  casdoor:
+    image: casbin/casdoor:latest
+    ports:
+      - "8000:8000"
+    depends_on:
+      casdoor_db:
+        condition: service_healthy
+    environment:
+      driverName: postgres
+      dataSourceName: postgres://${AUTH_DB_USERNAME}:${AUTH_DB_PASSWORD}@casdoor_db:5430/${AUTH_DB_NAME}?sslmode=disable
+      
+  casdoor_db:
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: ${AUTH_DB_NAME}
+      POSTGRES_USER: ${AUTH_DB_USERNAME}
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD}
+    command: -p 5430
+    ports:
+      - "5430:5430"
+    volumes:
+      - auth_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -p 5430 -U ${AUTH_DB_USERNAME} -d ${AUTH_DB_NAME}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    image: demo-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+      network: host
+    environment:
+      AUTH_ENDPOINT_URL: http://casdoor:8000
+      AUTH_FRONT_ENDPOINT_URL: http://localhost:8000
+      AUTH_CALLBACK_URL: http://localhost:8080/api/auth/callback
+      AUTH_CLIENT_ID: ${APP_CLIENT_ID}
+      AUTH_CLIENT_SECRET: ${APP_CLIENT_SECRET}
+
+      DB_HOST: app_db
+      DB_PORT: 5431
+      DB_NAME: ${APP_DB_NAME}
+      DB_USERNAME: ${APP_DB_USERNAME}
+      DB_PASSWORD: ${APP_DB_PASSWORD}
+    command: fastapi dev --host 0.0.0.0 --port 8080
+    ports:
+      - 8080:8080
+    volumes:
+      - .:/app
+    depends_on:
+      casdoor:
+        condition: service_started
+      app_db:
+        condition: service_healthy
+
+  app_db:
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: ${APP_DB_NAME}
+      POSTGRES_USER: ${APP_DB_USERNAME}
+      POSTGRES_PASSWORD: ${APP_DB_PASSWORD}
+    command: -p 5431
+    volumes:
+      - app_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -p 5431 -U ${APP_DB_USERNAME} -d ${APP_DB_NAME}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  auth_db_data:
+  app_db_data:
