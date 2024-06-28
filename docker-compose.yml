@@ -3,6 +3,8 @@ services:
     image: casbin/casdoor:latest
     ports:
       - "8000:8000"
+    volumes:
+      - ./casdoor_init_data.json:/init_data.json
     depends_on:
       casdoor_db:
         condition: service_healthy
@@ -20,7 +22,7 @@ services:
     ports:
       - "5430:5430"
     volumes:
-      - auth_db_data:/var/lib/postgresql/data
+      - casdoor_db_data:/var/lib/postgresql/data
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -p 5430 -U ${AUTH_DB_USERNAME} -d ${AUTH_DB_NAME}" ]
       interval: 5s
@@ -72,5 +74,5 @@ services:
       retries: 5
 
 volumes:
-  auth_db_data:
+  casdoor_db_data:
   app_db_data:
