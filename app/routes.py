@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 
-from app.auth import authorize, casdoor_sdk, get_current_user
+from app.auth import authorize, casdoor, get_current_user
 from app.database import SessionDep
 from app.models import Book
 from app.schema import BookDetailsRes, BookReq, BookReqPartial, BookSummaryRes, User
@@ -13,7 +13,7 @@ auth_router = APIRouter(prefix="/auth", tags=["Auth"])
 
 @auth_router.get("/callback")
 async def auth_callback(code: str, state: str):
-    return casdoor_sdk.get_oauth_token(code)
+    return casdoor.get_oauth_token(code)
 
 
 @auth_router.get("/profile")
@@ -44,7 +44,7 @@ async def get_book(id: int, session: SessionDep):
 async def create_book(
     req: BookReq,
     session: SessionDep,
-    user: Annotated[User, Depends(authorize(permissions=["book:write"]))],
+    user: Annotated[User, Depends(authorize("book", ["write"]))],
 ):
     book = Book(**req.model_dump())
     book.creator_user_id = book.modifier_user_id = user.id
@@ -58,7 +58,7 @@ async def update_book(
     id: int,
     req: BookReq,
     session: SessionDep,
-    user: Annotated[User, Depends(authorize(permissions=["book:write"]))],
+    user: Annotated[User, Depends(authorize("book", ["write"]))],
 ):
     book = await session.get(Book, id)
     if not book:
@@ -74,7 +74,7 @@ async def partial_update_book(
     id: int,
     req: BookReqPartial,
     session: SessionDep,
-    user: Annotated[User, Depends(authorize(permissions=["book:write"]))],
+    user: Annotated[User, Depends(authorize("book", ["write"]))],
 ):
     book = await session.get(Book, id)
     if not book:
@@ -89,7 +89,7 @@ async def partial_update_book(
 async def delete_book(
     id: int,
     session: SessionDep,
-    user: Annotated[User, Depends(authorize(permissions=["book:admin"]))],
+    user: Annotated[User, Depends(authorize("book", ["admin"]))],
 ):
     book = await session.get(Book, id)
     if not book:
